@@ -25,16 +25,17 @@ class ICMPPacket():
         """"""
 
         payload = payload or ""
-        self.__icmp_type = None
-        self.__icmp_code = None
+        self._icmp_type = None
+        self._icmp_code = None
 
-        self.__cs = None
-        self.__id = None
+        self._cs = None
+        self._id = None
+        self._sec_num = None
 
         if from_ip:
             self.__from_ip(payload)
         else:
-            self.__payload = payload
+            self._payload = payload
 
     def __from_ip(self, payload):
         payload = payload[IP_HEADER_LEN:]  # drop IP header
@@ -51,16 +52,13 @@ class ICMPPacket():
     def __str__(self):
         return """
     Packet:
-        icmp_type:  {0}
-        icmp_code:  {1}
-        checksum:   {2}
-        identifier: {3}
-        seq_numer:  {4}
-        payload:    {5}
-        """.format(
-            self.icmp_type, self.icmp_code,
-            self.checksum, self.identifier,
-            self.seq_number, self.payload)
+        icmp_type:  {_icmp_type}
+        icmp_code:  {_icmp_code}
+        checksum:   {_cs}
+        identifier: {_id}
+        seq_numer:  {_sec_num}
+        payload:    {_payload}
+        """.format(**self.__dict__)
 
     @property
     def data(self):
@@ -68,27 +66,27 @@ class ICMPPacket():
 
     @property
     def payload(self):
-        return self.__payload
+        return self._payload
 
     @property
     def icmp_type(self):
-        return self.__icmp_type or ICMP_TYPE
+        return self._icmp_type or ICMP_TYPE
 
     @property
     def icmp_code(self):
-        return self.__icmp_code or ICMP_CODE
+        return self._icmp_code or ICMP_CODE
 
     @property
     def checksum(self):
-        return self.__cs or 0
+        return self._cs or 0
 
     @property
     def identifier(self):
-        return self.__id or os.getpid()
+        return self._id or os.getpid()
 
     @property
     def seq_number(self):
-        return SECUENCE_NUMBER
+        return self._sec_num or SECUENCE_NUMBER
 
     @property
     def header(self):
