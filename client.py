@@ -155,6 +155,8 @@ def main():
                         packet = ICMPPacket(data, key=args.key, from_ip=True)
                     except InvalidICMPMessage:
                         continue
+                    except UnicodeDecodeError:
+                        continue
                     print("Received: {0}".format(packet.payload))
                 if s == sys.stdin:
                     message = sys.stdin.readline()
