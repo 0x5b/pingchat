@@ -15,16 +15,22 @@ IP_HEADER_LEN = 20
 ICMP_HEADER_LEN = 8
 
 
+class InvalidICMPMessage(Exception):
+    def __init__(self):
+        Exception.__init__(self, "NoKey.Drop packet")
+
+
 class ICMPPacket():
     """ICMP packet representation."""
 
     __pack_pattern = "bbHHh{0}s"
     __header_pattern = "bbHHh"
 
-    def __init__(self, payload, from_ip=False):
+    def __init__(self, payload, key, from_ip=False):
         """"""
 
         payload = payload or ""
+        self.key = key
         self._icmp_type = None
         self._icmp_code = None
 
@@ -42,8 +48,13 @@ class ICMPPacket():
         packet = struct.unpack(
             self.__pack_pattern.format(len(payload[ICMP_HEADER_LEN:])), payload)
 
-        self.__payload = packet[-1].decode("utf-8")
-        self.__icmp_type, self.__icmp_code, self.__cs, self.__id = packet[:4]
+        self._data = packet[-1].decode("utf-8")
+        if self._data.startswith(self.key):
+            self._payload = self._data[len(self.key):]  # drop key from message
+            (self._icmp_type, self._icmp_code,
+             self._cs, self._id, self._sec_num) = packet[:5]
+        else:
+            raise InvalidICMPMessage()
 
     def __call__(self):
         self.calc_checksum()
@@ -62,7 +73,7 @@ class ICMPPacket():
 
     @property
     def data(self):
-        return str.encode(self.payload)
+        return str.encode(self.key + self.payload)
 
     @property
     def payload(self):
@@ -108,13 +119,15 @@ def main():
     group.add_argument("-c", "--client", action="store_true")
 
     parser.add_argument("-m", "--message", help="Message, that was passed")
+    parser.add_argument(
+        "-k", "--key", help="Key, that indicate message", default="@@")
 
     args = parser.parse_args()
     sock = socket.socket(
         socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
 
     if args.client:
-        packet = ICMPPacket(args.message)
+        packet = ICMPPacket(args.message, key=args.key)
         print("Sent: {0}".format(packet.payload))
 
         sock.sendto(packet(), (SERVER_IP, 1))
@@ -138,11 +151,14 @@ def main():
             for s in input_ready:
                 if s == sock:
                     data = s.recv(1024)
-                    packet = ICMPPacket(data, from_ip=True)
+                    try:
+                        packet = ICMPPacket(data, key=args.key, from_ip=True)
+                    except InvalidICMPMessage:
+                        continue
                     print("Received: {0}".format(packet.payload))
                 if s == sys.stdin:
                     message = sys.stdin.readline()
-                    packet = ICMPPacket(message)
+                    packet = ICMPPacket(message, key=args.key)
                     print("Sent: {0}".format(packet.payload))
                     sock.sendto(packet(), (SERVER_IP, 1))
 
