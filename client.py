@@ -7,7 +7,8 @@ import struct
 SERVER_IP = "127.0.0.1"
 
 # TODO: move constants to somewhere
-ICMP_TYPE = 8
+ICMP_TYPE_ECHO = 8
+ICMP_TYPE_ECHO_REPLY = 0
 ICMP_CODE = 0
 TMP_CHECKSUM = 0
 SECUENCE_NUMBER = 0
@@ -16,8 +17,8 @@ ICMP_HEADER_LEN = 8
 
 
 class InvalidICMPMessage(Exception):
-    def __init__(self):
-        Exception.__init__(self, "NoKey.Drop packet")
+    def __init__(self, message="NoKey.Drop"):
+        Exception.__init__(self, message)
 
 
 class ICMPPacket():
@@ -56,6 +57,9 @@ class ICMPPacket():
         else:
             raise InvalidICMPMessage()
 
+        if self.icmp_type == ICMP_TYPE_ECHO_REPLY:
+            raise InvalidICMPMessage("EchoReplay.Drop")
+
     def __call__(self):
         self.calc_checksum()
         return self.header + self.data
@@ -81,11 +85,11 @@ class ICMPPacket():
 
     @property
     def icmp_type(self):
-        return self._icmp_type or ICMP_TYPE
+        return self._icmp_type if self._icmp_type is not None else ICMP_TYPE_ECHO
 
     @property
     def icmp_code(self):
-        return self._icmp_code or ICMP_CODE
+        return self._icmp_code if self._icmp_code is not None else ICMP_CODE
 
     @property
     def checksum(self):
